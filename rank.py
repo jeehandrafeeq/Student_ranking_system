@@ -3,7 +3,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 
-# Page Configuration
+# ---------------- PAGE CONFIG ----------------
+
 st.set_page_config(
     page_title="School Student Ranking System",
     page_icon="🏆",
@@ -11,7 +12,8 @@ st.set_page_config(
 )
 
 
-# CSS Styling
+# ---------------- CSS ----------------
+
 st.markdown("""
 <style>
 
@@ -28,9 +30,9 @@ header{
     padding-top:1rem;
 }
 
-p,label,.stMarkdown{
-    color:#E5E7EB;
-    font-size:16px;
+
+p,label,span{
+    color:#E2E8F0;
 }
 
 
@@ -60,7 +62,6 @@ p,label,.stMarkdown{
 
 .metric h2{
     color:white;
-    font-size:32px;
 }
 
 
@@ -69,201 +70,257 @@ h1,h2,h3{
 }
 
 
-.stButton>button{
+.stButton button{
     background:#2563EB;
     color:white;
     border-radius:12px;
-    padding:10px 25px;
-    font-weight:bold;
 }
 
 
-.stButton>button:hover{
-    background:#38BDF8;
-    color:#0F172A;
+[data-testid="stMetricValue"]{
+    color:#22C55E;
 }
+
 
 </style>
+
 """, unsafe_allow_html=True)
 
 
 
-# Load Excel Data
+# ---------------- GRADE FUNCTION ----------------
+
+def calculate_grade(percentage):
+
+    if percentage >= 90:
+        return "A+"
+
+    elif percentage >= 80:
+        return "A"
+
+    elif percentage >= 70:
+        return "B"
+
+    elif percentage >= 60:
+        return "C"
+
+    elif percentage >= 50:
+        return "D"
+
+    else:
+        return "F"
+
+
+
+# ---------------- LOAD DEFAULT FILE ----------------
+
 df = pd.read_excel("Book1.xlsx")
 
 
-# Sort and Create Rank
+
+# ---------------- CREATE PERCENTAGE ----------------
+
+if "Percentage" not in df.columns:
+
+    numeric_columns = df.select_dtypes(
+        include="number"
+    ).columns
+
+
+    marks_columns = [
+        col for col in numeric_columns
+        if col.lower() != "attendance"
+    ]
+
+
+    df["Percentage"] = (
+        df[marks_columns]
+        .mean(axis=1)
+    )
+
+
+
+# ---------------- NEW GRADE COLUMN ----------------
+
+df["Grade"] = df["Percentage"].apply(
+    calculate_grade
+)
+
+
+
+# ---------------- CREATE RANK ----------------
+
 df = df.sort_values(
     "Percentage",
     ascending=False
 )
 
-df["Rank"] = range(1,len(df)+1)
 
-
-
-# Title
-st.markdown(
-    '<p class="title">🏆 School Student Ranking System</p>',
-    unsafe_allow_html=True
+df["Rank"] = range(
+    1,
+    len(df)+1
 )
 
+
+
+# ---------------- TITLE ----------------
+
+
 st.markdown(
-    '<p class="sub">Dashboard</p>',
-    unsafe_allow_html=True
+"""
+<p class="title">
+🏆 School Student Ranking System
+</p>
+""",
+unsafe_allow_html=True
 )
+
+
+st.markdown(
+"""
+<p class="sub">
+Student Performance Analytics Dashboard
+</p>
+""",
+unsafe_allow_html=True
+)
+
 
 
 st.write("---")
 
 
-# Student Data Selection
 
-st.subheader("📊 Student Data Selection")
-
-
-columns = [
-    "Rank",
-    "Student_ID",
-    "Name",
-    "Class",
-    "Percentage",
-    "Grade",
-    "Attendance"
-]
+# ---------------- FILE UPLOAD ----------------
 
 
-selected_columns = st.multiselect(
-    "Select information you want to display:",
-    columns
+st.subheader("📂 Upload Student Excel File")
+
+
+uploaded_file = st.file_uploader(
+    "Upload Excel File",
+    type=["xlsx"]
 )
 
 
-if selected_columns:
 
-    st.dataframe(
-        df[selected_columns],
-        use_container_width=True
+if uploaded_file:
+
+
+    df = pd.read_excel(
+        uploaded_file
     )
 
-else:
 
-    st.warning("Please select at least one option.")
+    # Percentage
+
+    if "Percentage" not in df.columns:
+
+
+        numeric_columns = df.select_dtypes(
+            include="number"
+        ).columns
+
+
+        marks_columns = [
+            col for col in numeric_columns
+            if col.lower()!="attendance"
+        ]
+
+
+        df["Percentage"] = (
+            df[marks_columns]
+            .mean(axis=1)
+        )
 
 
 
-# Dashboard Cards
+    # Grade
+
+    df["Grade"] = df["Percentage"].apply(
+        calculate_grade
+    )
+
+
+    # Rank
+
+    df = df.sort_values(
+        "Percentage",
+        ascending=False
+    )
+
+
+    df["Rank"] = range(
+        1,
+        len(df)+1
+    )
+
+
+
+st.subheader("📊 Student Data")
+
+st.dataframe(
+    df,
+    use_container_width=True
+)
+
+
+
+# ---------------- CARDS ----------------
+
 
 st.write("---")
+
+st.subheader(
+    "📈 Performance Overview"
+)
+
 
 c1,c2,c3,c4 = st.columns(4)
 
 
 with c1:
 
-    st.markdown(f"""
-    <div class="metric">
-    <h2>{len(df)}</h2>
-    Students
-    </div>
-    """,unsafe_allow_html=True)
-
+    st.metric(
+        "Total Students",
+        len(df)
+    )
 
 
 with c2:
 
-    st.markdown(f"""
-    <div class="metric">
-    <h2>{round(df["Percentage"].mean(),2)}%</h2>
-    Average %
-    </div>
-    """,unsafe_allow_html=True)
-
+    st.metric(
+        "Average %",
+        f"{round(df['Percentage'].mean(),2)}%"
+    )
 
 
 with c3:
 
-    st.markdown(f"""
-    <div class="metric">
-    <h2>{df.iloc[0]["Name"]}</h2>
-    Top Student
-    </div>
-    """,unsafe_allow_html=True)
-
+    st.metric(
+        "Highest %",
+        f"{round(df['Percentage'].max(),2)}%"
+    )
 
 
 with c4:
 
-    st.markdown(f"""
-    <div class="metric">
-    <h2>{df["Percentage"].max()}%</h2>
-    Highest %
-    </div>
-    """,unsafe_allow_html=True)
+    st.metric(
+        "Top Student",
+        df.iloc[0]["Name"]
+    )
 
 
 
-# Charts
+# ---------------- RANK TABLE ----------------
+
 
 st.write("---")
 
 
-left,right = st.columns(2)
-
-
-
-with left:
-
-    st.subheader("🏆 Top 10 Students")
-
-
-    top = df.head(10)
-
-
-    fig,ax = plt.subplots(figsize=(8,5))
-
-
-    ax.bar(
-        top["Name"],
-        top["Percentage"]
-    )
-
-
-    plt.xticks(rotation=40)
-
-
-    st.pyplot(fig)
-
-
-
-with right:
-
-    st.subheader("📊 Grade Distribution")
-
-
-    grade = df["Grade"].value_counts()
-
-
-    fig2,ax2 = plt.subplots(figsize=(6,5))
-
-
-    ax2.pie(
-        grade,
-        labels=grade.index,
-        autopct="%1.1f%%"
-    )
-
-
-    st.pyplot(fig2)
-
-
-
-# Final Ranking Table
-
-st.write("---")
-
-
-st.subheader("🏅 Complete Ranking Table")
+st.subheader(
+    "🏅 Student Ranking"
+)
 
 
 st.dataframe(
@@ -279,4 +336,5 @@ st.dataframe(
         ]
     ],
     use_container_width=True
+)
 )
